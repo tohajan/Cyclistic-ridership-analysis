@@ -1,0 +1,309 @@
+---
+title: "Cyclistic Bike-Share Analysis: Usage Patterns of Members vs. Casual Riders"
+author: "Toheeb M."
+date: "`r Sys.Date()`"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: cosmo
+---
+
+## Executive Summary
+Cyclistic, a fictional Chicago-based bike-share program, aims to increase annual memberships, which generate significantly higher long-term revenue than single-ride or day-pass purchases. To support this strategic priority, this analysis investigates a key question:
+
+> How do annual members and casual riders use Cyclistic bikes differently?
+
+Using historical trip data from Q1 2019 and Q1 2020, I cleaned, harmonized, and merged datasets; engineered time-based features; examined ride behavior patterns; and generated insights to guide targeted marketing strategy.
+
+Key findings include:
+
+* Members take more rides, but
+* Casual riders take substantially longer rides, contributing more revenue under a pay-per-ride model.
+* Weekday vs weekend patterns differ sharply:
+  * Members ride heavily on weekdays → commuter behavior
+  * Casual riders ride more on weekends → recreational use
+* Trip duration differences persist across all days of the week
+
+These findings suggest membership campaigns should target casual riders who appear to use bikes for leisure but may benefit from cost savings or convenience associated with membership.
+
+## 1. Business Task
+
+Cyclistic leadership wants to understand behavioral differences between annual members and casual riders in order to:
+
+1. Increase annual memberships
+2. Improve marketing segmentation
+3. Identify opportunities to convert casual riders into members
+
+This analysis focuses on the first guiding question:
+
+> How do annual members and casual riders use Cyclistic bikes differently?
+
+## 2. Data Sources
+
+Two datasets were provided (Divvy/Cyclistic public data):
+
+* Divvy_Trips_2019_Q1.xlsx
+* Divvy_Trips_2020_Q1.xlsx
+
+These include individual trip-level data with timestamps, bike type, station metadata, and rider category.  
+
+**Limitations**:
+
+* Data only includes Q1 (winter months) → seasonal usage patterns not captured.
+* Demographic attributes were removed from 2020 onward → less ability to segment customer profiles.
+* Trip data cannot identify revenue directly.
+
+
+## 3. Load Libraries
+
+```{r Setup & package loading}
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+
+pacman::p_load(here, tidyverse, sessioninfo)
+```
+
+
+
+
+
+## 4. Import Raw Data
+```{r}
+q1_2019 <- readxl::read_xlsx(here::here("data", "Divvy_Trips_2019_Q1.xlsx")) # Q1 2019 data set
+q1_2020 <- readxl::read_xlsx(here::here("data", "Divvy_Trips_2020_Q1.xlsx")) # Q1 2020 data set
+```
+
+
+
+## 5. Data Cleaning & Preparation
+
+### 5.1 Harmonize column names
+Review column names in each data set
+```{r}
+colnames(q1_2019)
+```
+
+```{r}
+colnames(q1_2020) 
+```
+
+The 2019 dataset uses earlier naming conventions. I align them to the 2020 schema:
+```{r}
+q1_2019 <- q1_2019 %>%
+  rename(
+    ride_id = trip_id,
+    rideable_type = bikeid,
+    started_at = start_time,
+    ended_at = end_time,
+    start_station_name = from_station_name,
+    start_station_id = from_station_id,
+    end_station_name = to_station_name,
+    end_station_id = to_station_id,
+    member_casual = usertype
+    )
+```
+
+
+### 5.2 Standardize data types
+I inspect the data frames and look for incongruencies:
+```{r}
+str(q1_2019)
+str(q1_2020)
+```
+
+Two variables (`ride_id` and `rideable_type`) are numeric in 2019; I convert these to character so they match the corresponding variable types in 2020:
+```{r}
+q1_2019 <- q1_2019 %>%
+  mutate(
+    ride_id = as.character(ride_id),
+    rideable_type = as.character(rideable_type)
+    )
+```
+
+
+To confirm that the data types are changed correctly:
+```{r}
+class(q1_2019$ride_id)
+class(q1_2019$rideable_type)
+```
+
+### 5.3 Combine datasets
+```{r concatenate the two datasets}
+all_trips <- bind_rows(q1_2019, q1_2020)
+```
+
+### 5.4 Remove discontinued variables
+I remove variables that were no longer included from 2020:
+```{r drop variables}
+all_trips <- all_trips %>%  
+  select(-c(start_lat, start_lng, end_lat, end_lng, birthyear, gender,  tripduration))
+```
+
+
+## 6. Feature Engineering
+### 6.1: Standardize rider catrgories
+Review `member_casual` column
+```{r}
+table(all_trips$member_casual)
+```
+There are inconsistent values based on how the labels used in different years: `member` and `Subscriber` are the same; just as are `Customer` and `casual`. <br>
+
+Now, clean for consistency:
+```{r}
+all_trips <- all_trips %>%
+  mutate(member_casual = recode(member_casual,
+                                "Subscriber" = "member",
+                                "Customer" = "casual"))
+```
+
+Check to confirm the fix:
+```{r}
+table(all_trips$member_casual)
+```
+
+### 6.2 Extract date components
+As it is, the date format is conflates date components (day, month, year). I extract these components (from `started_at` column) to allow for enhance later aggregation.
+```{r}
+all_trips <- all_trips %>%
+  mutate(
+    date = as.Date(started_at),
+    month = format(date, "%m"),
+    day = format(date, "%d"),
+    year = format(date, "%Y"),
+    day_of_week = wday(date, label = TRUE)
+    )
+```
+
+
+### 6.3 Calculate ride length
+```{r}
+all_trips <- all_trips %>%
+  mutate(ride_length = as.numeric(difftime(ended_at, started_at, units = "secs")))
+```
+
+### 6.4 Remove invalid entries (negative durations, "HQ QR" maintenance rides)
+Check if there are negative values in the newly created column:
+```{r}
+any(all_trips$ride_length < 0)
+```
+
+Check how many there are:
+```{r}
+sum(all_trips$ride_length < 0)
+```
+
+Also, there were a few entries where bikes were taken out of docks, where `start_station_name` has a value of `HQ QR`. Review them:
+```{r}
+any(all_trips$start_station_name == "HQ QR")
+sum(all_trips$start_station_name == "HQ QR")
+```
+
+Create a new dataset that excludes these observations in both categories:
+```{r}
+all_trips_v2 <- all_trips %>%
+  filter(ride_length >= 0,
+         start_station_name != "HQ QR")
+```
+
+
+## 7. Descriptive Analysis
+### 7.1 Overall ride duration statistics
+```{r}
+summary(all_trips_v2$ride_length)
+```
+
+
+### 7.2 Compare members vs casual riders
+```{r}
+all_trips_v2 %>%
+  group_by(member_casual) %>%
+  summarise(
+    mean_duration = mean(ride_length),
+    median_duration = median(ride_length),
+    max_duration = max(ride_length),
+    min_duration = min(ride_length)
+    )
+```
+
+**Insight:**  
+Casual riders consistently take much longer trips.
+
+### 7.3 Daily riding patterns
+
+```{r}
+all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(
+    number_of_rides = n(),
+    average_duration = mean(ride_length)
+    )
+```
+
+
+## 8. Visualizations
+### 8.1 Number of rides by user type and day
+<br>
+Analyze ridership by type and weekday:
+```{r}
+all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(number_of_rides = n()) %>%
+  ggplot(aes(day_of_week, number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+### 8.2 Average ride duration by user type and day
+```{r}
+all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(average_duration = mean(ride_length)) %>%
+  ggplot(aes(day_of_week, average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+
+## 9. Key Findings (Interpretation)
+
+* Members ride more frequently, especially on weekdays → heavy commuter orientation.
+* Casual riders take far longer trips, especially on weekends → recreational usage.
+* Casual riders generate more revenue per ride under a duration-based pricing model.
+* Membership campaigns should not assume casual riders are “less valuable”—they simply use the service differently. 
+
+## 10. Recommendations
+**1. Create a membership tier targeted at weekend recreational riders**  
+E.g., a “Recreation Pass” with lower weekday benefits but generous weekend allowances.
+
+**2. Launch targeted digital campaigns based on usage patterns**  
+
+* Weekday commuter-focused messaging → potential members
+* Weekend leisure-focused messaging → recreational casual riders
+
+**3. Improve transparency around cost savings**  
+Casual riders with long ride durations would benefit from membership, but only if the messaging clearly shows potential savings.
+
+## 11. Export Data for Further Analysis (e.g., in Tableau or spreadsheets)
+```{r}
+trip_duration <- all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(avg_ride_length = mean(ride_length), .groups = "keep")
+
+write.csv(trip_duration, "avg_ride_length.csv", row.names = FALSE)
+```
+
+
+```{r}
+sessioninfo::session_info()
+```
+
+
+
+
+
+
+
+
+
+
