@@ -5,12 +5,12 @@ Author: Toheeb M. • Tools: R, Tidyverse, ggplot2, R Markdown
 
 ---
 
-Repository Structure
-├── README.md       # Project overview + documentation
-├── Cyclistic company analytics.md # Main notebook
-├── Cyclistic company analytics.Rmd # R-markdown version of main notebook
-├── Cyclistic-company-analytics_files/figure-gfm   # Auto-generated visualizations - plots and graphs
-├── data/       # Raw Cyclistic data files
+### Repository Structur
+├── README.md       # Project overview + documentation  
+├── Cyclistic company analytics.md # Main notebook  
+├── Cyclistic company analytics.Rmd # R-markdown version of main notebook  
+├── Cyclistic-company-analytics_files/figure-gfm   # Auto-generated visualizations - plots and graphs  
+├── data/       # Raw Cyclistic data files  
 └── average_ride_length.csv        # Exported output (for further analysis)
 ---
 
@@ -27,6 +27,7 @@ Using Q1 2019 and Q1 2020 Divvy/Cyclistic trip data, this analysis:
 - Provides data-driven recommendations for membership growth
 
 The project is fully reproducible via the included R Markdown script.
+---
 
 ### Skills Demonstrated
 - Data Wrangling: tidyverse
@@ -35,6 +36,7 @@ The project is fully reproducible via the included R Markdown script.
 - Data Visualization: ggplot2
 - Business Communication: insights → recommendations
 - Reproducible Workflow: R Markdown
+---
 
 ### Key Findings
 **1. Members ride more frequently**  
@@ -52,6 +54,7 @@ indicate recreational usage.
 **Insight**  
 Longer trip durations among casual riders suggest opportunities to highlight cost savings and 
 convenience associated with membership.
+---
 
 ### Recommendations
 1. Develop a recreation-focused membership tier
@@ -61,6 +64,7 @@ Target high-duration casual riders who bike primarily on weekends.
   * Weekend messaging → target tourists & leisure riders
 3. Improve cost-savings transparency
   Demonstrate when frequent or long rides make membership cheaper.
+---
 
 ### Visualization Examples
 * Number of rides by user type & weekday
@@ -68,10 +72,12 @@ Target high-duration casual riders who bike primarily on weekends.
 * Distribution of ride length
 
 All plots generated using ggplot2.
+---
 
 ### Exported Output
 A summary CSV (for Tableau or downstream analysis):
   `average_ride_length.csv`
+---
 
 ### Conclusion
 This project provides a reproducible, business-oriented analysis demonstrating the full pipeline 
