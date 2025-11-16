@@ -3,6 +3,8 @@
 
 Author: Toheeb M. • Tools: R, Tidyverse, ggplot2, R Markdown
 
+---
+
 ### Overview
 This project examines how annual members and casual riders use Cyclistic’s bike-share service 
 differently. The goal is to generate insights that support targeted marketing strategies to 
