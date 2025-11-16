@@ -6,12 +6,12 @@ Author: Toheeb M. • Tools: R, Tidyverse, ggplot2, R Markdown
 ---
 
 Repository Structure
-├── data/              # Raw Cyclistic trip files
-├── scripts/
-│   └── cyclistic_analysis.Rmd
-├── output/
-│   └── average_ride_length.csv
-└── README.md
+├── README.md       # Project overview + documentation
+├── Cyclistic company analytics.md # Main notebook
+├── Cyclistic company analytics.Rmd # R-markdown version of main notebook
+├── Cyclistic-company-analytics_files/figure-gfm   # Auto-generated visualizations - plots and graphs
+├── data/       # Raw Cyclistic data files
+└── average_ride_length.csv        # Exported output (for further analysis)
 ---
 
 ### Overview
